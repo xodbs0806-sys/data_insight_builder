@@ -5,7 +5,7 @@ import glob
 import json
 import time
 import logging
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
@@ -24,6 +24,8 @@ logging.basicConfig(
 logger = logging.getLogger("DataInsightBuilder")
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "data-insight-builder-secret-8282")
+SITE_PASSWORD = os.getenv("SITE_PASSWORD", "8282")
 
 # 환경변수 설정
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -102,6 +104,49 @@ def call_gemini_with_retry(prompt, config=None, retries=3):
             logger.warning(f"[AI RETRY] Gemini 호출 실패 (시도 {attempt+1}/{retries}): {str(e)}")
             time.sleep(2)
     raise last_err
+
+@app.before_request
+def require_login():
+    """비밀번호 인증 검사 (정적 파일 및 공개 엔드포인트 제외)"""
+    if request.path.startswith("/static") or request.path in ["/login", "/health"]:
+        return None
+    if not session.get("authenticated"):
+        if request.method == "POST":
+            return jsonify({"status": "error", "message": "접근 권한이 없습니다. 먼저 비밀번호를 입력해 주세요."}), 401
+        return redirect(url_for("login"))
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+            pwd = str(data.get("password", "")).strip()
+        else:
+            pwd = str(request.form.get("password", "")).strip()
+
+        if pwd == SITE_PASSWORD:
+            session["authenticated"] = True
+            logger.info("[AUTH] 로그인 성공 (비밀번호 일치)")
+            if request.is_json:
+                return jsonify({"status": "success", "redirect": "/"})
+            return redirect(url_for("index"))
+        else:
+            logger.warning("[AUTH] 로그인 실패: 잘못된 비밀번호")
+            if request.is_json:
+                return jsonify({"status": "error", "message": "비밀번호가 올바르지 않습니다."}), 401
+            error = "비밀번호가 올바르지 않습니다. 다시 입력해 주세요."
+
+    if session.get("authenticated"):
+        return redirect(url_for("index"))
+
+    return render_template("login.html", error=error)
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    session.clear()
+    logger.info("[AUTH] 로그아웃 완료")
+    return redirect(url_for("login"))
 
 @app.route("/", methods=["GET"])
 def index():

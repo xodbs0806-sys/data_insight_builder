@@ -11,16 +11,25 @@ def run_e2e_test():
     client = app.test_client()
     
     # -------------------------------------------------------------
-    # 1. GET / 및 정적 파일 검증
+    # 1. 보안 접속 및 비밀번호 인증 (8282) 검증
     # -------------------------------------------------------------
-    print("\n[1단계 검증] GET / (인덱스 페이지 및 정적 파일 로드)")
-    res_index = client.get("/")
-    assert res_index.status_code == 200, f"Index page failed: {res_index.status_code}"
-    html = res_index.get_data(as_text=True)
-    assert "AI Data Insight Builder" in html, "HTML title/heading missing"
-    assert "chart.js" in html.lower(), "Chart.js CDN missing"
-    assert "app.js" in html, "app.js link missing"
-    print("  ✅ GET / 성공 (Status 200, HTML 템플릿 및 CDN 연동 확인)")
+    print("\n[1단계 검증] 보안 접속 (비밀번호 미인증 시 리다이렉트 및 로그인)")
+    res_unauth = client.get("/")
+    assert res_unauth.status_code == 302, f"Expected redirect to /login: {res_unauth.status_code}"
+    print("  ✅ 미인증 접근 시 /login 리다이렉트 확인 (Status 302)")
+
+    # 틀린 비밀번호 시도
+    res_wrong = client.post("/login", data={"password": "wrong_password"})
+    assert "올바르지 않습니다" in res_wrong.get_data(as_text=True), "Wrong password check failed"
+    print("  ✅ 잘못된 비밀번호 거부 확인")
+
+    # 올바른 비밀번호(8282) 로그인
+    res_login = client.post("/login", data={"password": "8282"}, follow_redirects=True)
+    assert res_login.status_code == 200, f"Login failed: {res_login.status_code}"
+    html = res_login.get_data(as_text=True)
+    assert "AI Data Insight Builder" in html, "HTML title/heading missing after login"
+    assert "로그아웃" in html, "Logout button missing"
+    print("  ✅ 비밀번호(8282) 로그인 성공 및 메인 페이지 진입 확인 (Status 200)")
 
     # -------------------------------------------------------------
     # 2. GET /health

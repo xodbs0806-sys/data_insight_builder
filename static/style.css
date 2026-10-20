@@ -88,6 +88,27 @@ body {
     border: 1px solid var(--slate-200);
 }
 
+.logout-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    margin-left: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--slate-600);
+    background: var(--slate-100);
+    border: 1px solid var(--slate-200);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    background: #fee2e2;
+    color: var(--danger);
+    border-color: #fca5a5;
+}
+
 .status-dot {
     width: 8px;
     height: 8px;
