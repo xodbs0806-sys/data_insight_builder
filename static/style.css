@@ -39,7 +39,8 @@ body {
     background-color: #f1f5f9;
     color: var(--slate-800);
     line-height: 1.6;
-    padding: 24px 16px;
+    padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    -webkit-tap-highlight-color: transparent;
 }
 
 .app-container {

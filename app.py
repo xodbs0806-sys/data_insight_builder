@@ -108,12 +108,20 @@ def call_gemini_with_retry(prompt, config=None, retries=3):
 @app.before_request
 def require_login():
     """비밀번호 인증 검사 (정적 파일 및 공개 엔드포인트 제외)"""
-    if request.path.startswith("/static") or request.path in ["/login", "/health"]:
+    if request.path.startswith("/static") or request.path in ["/login", "/health", "/sw.js", "/manifest.json"]:
         return None
     if not session.get("authenticated"):
         if request.method == "POST":
             return jsonify({"status": "error", "message": "접근 권한이 없습니다. 먼저 비밀번호를 입력해 주세요."}), 401
         return redirect(url_for("login"))
+
+@app.route("/sw.js")
+def service_worker():
+    return app.send_static_file("sw.js")
+
+@app.route("/manifest.json")
+def manifest():
+    return app.send_static_file("manifest.json")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
